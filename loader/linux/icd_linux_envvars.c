@@ -21,7 +21,9 @@
 #define _GNU_SOURCE
 #endif
 
+#ifndef __ANDROID__
 #include "icd_cmake_config.h"
+#endif
 
 #include <stdlib.h>
 
