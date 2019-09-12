@@ -38,6 +38,7 @@ static pthread_once_t initialized = PTHREAD_ONCE_INIT;
 // go through the list of vendors in the two configuration files
 void khrIcdOsVendorsEnumerate(void)
 {
+#ifndef __ANDROID__
     DIR *dir = NULL;
     struct dirent *dirEntry = NULL;
     char* vendorPath = ICD_VENDOR_PATH;
@@ -141,6 +142,8 @@ void khrIcdOsVendorsEnumerate(void)
     {
         khrIcd_free_getenv(envPath);
     }
+#endif
+    khrIcdVendorAdd("/vendor/lib64/libigdrcl.so");
 }
 
 // go through the list of vendors only once
