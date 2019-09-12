@@ -1,0 +1,42 @@
+cc_library_shared {
+    name: "libOpenCL",
+
+    vendor_available: true,
+
+    defaults: [
+        "OpenCL-ICD-Loader-defaults",
+    ],
+
+    srcs: [
+        "loader/icd.c",
+        "loader/icd_dispatch.c",
+        "loader/linux/icd_linux.c",
+        "loader/linux/icd_linux_envvars.c",
+    ],
+
+    cflags: [
+        "-O3",
+        "-DNDEBUG",
+        "-fPIC",
+        "-DCL_TARGET_OPENCL_VERSION=220",
+        "-DOpenCL_EXPORTS",
+    ],
+
+    cppflags: [
+        
+    ],
+
+    local_include_dirs: [
+        "inc",
+        "loader",
+    ],
+
+    shared_libs: [
+        
+    ],
+
+    static_libs: [
+        
+    ],
+
+}

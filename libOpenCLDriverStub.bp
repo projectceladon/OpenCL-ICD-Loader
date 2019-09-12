@@ -1,0 +1,42 @@
+cc_library_shared {
+    name: "libOpenCLDriverStub",
+
+    vendor_available: true,
+
+    defaults: [
+        "OpenCL-ICD-Loader-defaults",
+    ],
+
+    srcs: [
+        "test/driver_stub/cl.c",
+        "test/driver_stub/cl_ext.c",
+        "test/driver_stub/cl_gl.c",
+        "test/driver_stub/icd.c",
+    ],
+
+    cflags: [
+        "-O3",
+        "-DNDEBUG",
+        "-fPIC",
+        "-DCL_TARGET_OPENCL_VERSION=220",
+        "-DOpenCLDriverStub_EXPORTS",
+    ],
+
+    cppflags: [
+        
+    ],
+
+    local_include_dirs: [
+        "inc",
+        "test/inc",
+    ],
+
+    shared_libs: [
+        "libIcdLog",
+    ],
+
+    static_libs: [
+        
+    ],
+
+}

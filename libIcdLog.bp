@@ -1,0 +1,39 @@
+cc_library_shared {
+    name: "libIcdLog",
+
+    vendor_available: true,
+
+    defaults: [
+        "OpenCL-ICD-Loader-defaults",
+    ],
+
+    srcs: [
+        "test/log/icd_test_log.c",
+    ],
+
+    cflags: [
+        "-O3",
+        "-DNDEBUG",
+        "-fPIC",
+        "-DCL_TARGET_OPENCL_VERSION=220",
+        "-DIcdLog_EXPORTS",
+    ],
+
+    cppflags: [
+        
+    ],
+
+    local_include_dirs: [
+        "inc",
+        "test/inc",
+    ],
+
+    shared_libs: [
+        
+    ],
+
+    static_libs: [
+        
+    ],
+
+}
