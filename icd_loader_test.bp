@@ -1,0 +1,49 @@
+cc_binary {
+    name: "icd_loader_test",
+
+    vendor_available: true,
+
+    defaults: [
+        "OpenCL-ICD-Loader-defaults",
+    ],
+
+    srcs: [
+        "test/loader_test/test_kernel.c",
+        "test/loader_test/main.c",
+        "test/loader_test/test_platforms.c",
+        "test/loader_test/icd_test_match.c",
+        "test/loader_test/test_program_objects.c",
+        "test/loader_test/test_sampler_objects.c",
+        "test/loader_test/test_buffer_object.c",
+        "test/loader_test/test_cl_runtime.c",
+        "test/loader_test/callbacks.c",
+        "test/loader_test/test_create_calls.c",
+        "test/loader_test/test_clgl.c",
+        "test/loader_test/test_image_objects.c",
+    ],
+
+    cflags: [
+        "-O3",
+        "-DNDEBUG",
+        "-DCL_TARGET_OPENCL_VERSION=220",
+    ],
+
+    cppflags: [
+        
+    ],
+
+    local_include_dirs: [
+        "inc",
+        "test/inc",
+    ],
+
+    shared_libs: [
+        "libOpenCL",
+        "libIcdLog",
+    ],
+
+    static_libs: [
+        
+    ],
+
+}

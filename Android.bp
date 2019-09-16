@@ -1,0 +1,40 @@
+cc_defaults {
+    name: "OpenCL-ICD-Loader-defaults",
+
+    vendor_available: true,
+
+    cflags: [
+        "-Wno-error",
+        "-Wno-error=implicit-function-declaration",
+        "-DAMD64",
+    ],
+
+    cppflags: [
+        "-D__ANDROID__",
+    ],
+
+    clang_cflags: [
+        "-Wno-error=non-virtual-dtor",
+    ],
+
+    include_dirs: [
+        "hardware/intel/external/opencl/igc/include/third_party/opencl_headers",
+    ],
+
+    shared_libs: [
+        
+    ],
+
+    static_libs: [
+        
+    ],
+
+}
+
+
+build = [
+    "libOpenCL.bp",
+    "libIcdLog.bp",
+    "libOpenCLDriverStub.bp",
+    "icd_loader_test.bp",
+]
