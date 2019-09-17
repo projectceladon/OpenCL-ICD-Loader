@@ -35,8 +35,8 @@ class Main:
         print("script = " + script)
         print("root = " + root)
 
-        # remove all middle & build files
-        print("It is removing build and middle-files for OpenCL-ICD-Loader ... ")
+        # remove all intermediate files and building directories
+        print("It is removing building directories and intermediate files for OpenCL-ICD-Loader ... ")
         cmd = "rm -rf " + path.join(script, "__pycache__") + NOVERBOSE
         cmd += "rm -rf " + path.join(root, BUILD_DIR) + NOVERBOSE
         #cmd += "find " + path.join(script, "..") + " -name '*\.bp' -type f -delete" + NOVERBOSE

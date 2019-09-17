@@ -18,33 +18,6 @@
 # ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 # 
-# The file-tree of OpenCL-ICD-Loader
-# OpenCL-ICD-Loader (cmake -DCMAKE_BUILD_TYPE=Release OpenCL-ICD-Loader) 
-# |
-# +---- libOpenCL.so.1.2 -> Tools/Android/build/icd-loader/CMakeFiles/OpenCL.dir 
-#       |
-#       +---- test 
-#             |
-#             +---- log 
-#             |     |
-#             |     +---- libIcdLog.so -> Tools/Android/build/icd-loader/test/platform/CMakeFiles/IcdLog.dir 
-#             |
-#             +---- loader_test 
-#             |     |
-#             |     +---- icd_loader_test -> Tools/Android/build/icd-loader/test/loader_test/CMakeFiles/icd_loader_test.dir 
-#             |           |
-#             |           => libOpenCL.so.1.2, libIcdLog.so
-#             |
-#             +---- driver_stub
-#                   |
-#                   +---- libOpenCLDriverStub.so -> Tools/Android/build/icd-loader/test/driver_stub/CMakeFiles/OpenCLDriverStub.dir 
-#                         |
-#                         => libIcdLog.so
-# 
-# About the detailed of soong-build-tools(cc package), please refer to: 
-#     https://ci.android.com/builds/submitted/5357401/linux/latest/view/soong_build.html 
-# 
-# 
 # library_static, library_shared, binary 
 cc_@module {
     name: "@name",
