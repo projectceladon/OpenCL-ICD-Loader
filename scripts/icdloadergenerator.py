@@ -48,7 +48,7 @@ class ICDLoaderGenerator(Generator):
             cflags = ["-Wno-error", "-Wno-error=implicit-function-declaration", "-DAMD64"],
             cppflags = ["-D__ANDROID__"],
             clang_cflags = ["-Wno-error=non-virtual-dtor"],
-            include_dirs = ["hardware/intel/external/opencl/igc/include/third_party/opencl_headers"],
+            include_dirs = ["hardware/intel/external/opencl/compute-runtime/third_party/opencl_headers"],
             bpfiles = ["libOpenCL.bp", "libIcdLog.bp", "libOpenCLDriverStub.bp", "icd_loader_test.bp"], )
 
     def getTemplate(self):

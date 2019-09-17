@@ -18,7 +18,7 @@ cc_defaults {
     ],
 
     include_dirs: [
-        "hardware/intel/external/opencl/igc/include/third_party/opencl_headers",
+        "hardware/intel/external/opencl/compute-runtime/third_party/opencl_headers",
     ],
 
     shared_libs: [
