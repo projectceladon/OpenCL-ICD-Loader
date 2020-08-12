@@ -23,6 +23,9 @@ cc_@module {
     name: "@name",
 
     vendor_available: true,
+    vndk: {
+      enabled: true,
+    },
 
     defaults: [
 @defaults

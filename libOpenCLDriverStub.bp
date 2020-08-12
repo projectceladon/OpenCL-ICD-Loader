@@ -3,6 +3,10 @@ cc_library_shared {
 
     vendor_available: true,
 
+    vndk: {
+      enabled: true,
+    },
+
     defaults: [
         "OpenCL-ICD-Loader-defaults",
     ],

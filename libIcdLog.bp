@@ -2,6 +2,9 @@ cc_library_shared {
     name: "libIcdLog",
 
     vendor_available: true,
+    vndk: {
+      enabled: true,
+    },
 
     defaults: [
         "OpenCL-ICD-Loader-defaults",
