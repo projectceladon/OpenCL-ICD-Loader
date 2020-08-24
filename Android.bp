@@ -1,10 +1,7 @@
 cc_defaults {
     name: "OpenCL-ICD-Loader-defaults",
 
-    vendor_available: true,
-    vndk: {
-      enabled: true,
-    },
+    vendor: true,
 
     cflags: [
         "-Wno-error",

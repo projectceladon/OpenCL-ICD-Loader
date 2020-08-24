@@ -21,10 +21,7 @@
 cc_defaults {
     name: "@name",
 
-    vendor_available: true,
-    vndk: {
-      enabled: true,
-    },
+    vendor: true,
 
     cflags: [
 @cflags
