@@ -7,8 +7,6 @@ extern cl_program program;
 extern cl_platform_id platform;
 extern cl_device_id devices;
 
-int ret_val;
-
 extern void CL_CALLBACK program_callback(cl_program _a, void* _b);
 
 const struct clRetainProgram_st clRetainProgramData[NUM_ITEMS_clRetainProgram]=
@@ -53,6 +51,9 @@ const struct clGetProgramBuildInfo_st clGetProgramBuildInfoData[NUM_ITEMS_clGetP
 
 int test_clRetainProgram(const struct clRetainProgram_st *data)
 {
+    (void)data;
+    cl_int ret_val;
+
     test_icd_app_log("clRetainProgram(%p)\n",
                     program);
 
@@ -67,6 +68,8 @@ int test_clRetainProgram(const struct clRetainProgram_st *data)
 
 int test_clBuildProgram(const struct clBuildProgram_st *data)
 {
+    cl_int ret_val;
+
     test_icd_app_log("clBuildProgram(%p, %u, %p, %p, %p, %p)\n",
                      program,
                      data->num_devices,
@@ -90,6 +93,8 @@ int test_clBuildProgram(const struct clBuildProgram_st *data)
 
 int test_clCompileProgram(const struct clCompileProgram_st *data)
 {
+    cl_int ret_val;
+
     test_icd_app_log("clCompileProgram(%p, %u, %p, %p, %u, %p, %p, %p)\n",
                      program,
                      data->num_devices,
@@ -119,6 +124,7 @@ int test_clCompileProgram(const struct clCompileProgram_st *data)
 int test_clLinkProgram(const struct clLinkProgram_st *data)
 {
     cl_program program;
+    cl_int ret_val;
     test_icd_app_log("clLinkProgram(%p, %u, %p, %p, %u, %p, %p, %p, %p)\n",
                      context,
                      data->num_devices,
@@ -142,12 +148,19 @@ int test_clLinkProgram(const struct clLinkProgram_st *data)
 
     test_icd_app_log("Value returned: %p\n", program);
 
+    test_icd_app_log("clReleaseProgram(%p)\n", program);
+    ret_val = clReleaseProgram(program);
+    test_icd_app_log("Value returned: %d\n", ret_val);
+
     return 0;
 
 }
 
 int test_clUnloadPlatformCompiler(const struct clUnloadPlatformCompiler_st *data)
 {
+    (void)data;
+    cl_int ret_val;
+
     test_icd_app_log("clUnloadPlatformCompiler(%p)\n", platform);
 
     ret_val=clUnloadPlatformCompiler(platform);
@@ -162,7 +175,7 @@ int test_clGetExtensionFunctionAddressForPlatform(const struct clGetExtensionFun
 {
     void *return_value;
     test_icd_app_log("clGetExtensionFunctionAddressForPlatform(%p, %p)\n",
-                     platform,  
+                     platform,
                      data->func_name);
 
     return_value=clGetExtensionFunctionAddressForPlatform(platform,
@@ -176,6 +189,8 @@ int test_clGetExtensionFunctionAddressForPlatform(const struct clGetExtensionFun
 
 int test_clGetProgramInfo(const struct clGetProgramInfo_st *data)
 {
+    cl_int ret_val;
+
     test_icd_app_log("clGetProgramInfo(%p, %u, %u, %p, %p)\n",
                      program,
                      data->param_name,
@@ -197,6 +212,8 @@ int test_clGetProgramInfo(const struct clGetProgramInfo_st *data)
 
 int test_clGetProgramBuildInfo(const struct clGetProgramBuildInfo_st *data)
 {
+    cl_int ret_val;
+
     test_icd_app_log("clGetProgramBuildInfo(%p, %p, %u, %u, %p, %p)\n",
                      program,
                      data->device,
@@ -224,7 +241,7 @@ int test_program_objects()
 
     for (i=0;i<NUM_ITEMS_clRetainProgram;i++)   {
         test_clRetainProgram(&clRetainProgramData[i]);
-    }    
+    }
 
     for (i=0;i<NUM_ITEMS_clBuildProgram;i++)    {
         test_clBuildProgram(&clBuildProgramData[i]);

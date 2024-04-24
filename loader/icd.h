@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019 The Khronos Group Inc.
+ * Copyright (c) 2016-2020 The Khronos Group Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,26 +33,40 @@
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #endif
 
+#ifndef CL_USE_DEPRECATED_OPENCL_2_0_APIS
+#define CL_USE_DEPRECATED_OPENCL_2_0_APIS
+#endif
+
+#ifndef CL_USE_DEPRECATED_OPENCL_2_1_APIS
+#define CL_USE_DEPRECATED_OPENCL_2_1_APIS
+#endif
+
+#ifndef CL_USE_DEPRECATED_OPENCL_2_2_APIS
+#define CL_USE_DEPRECATED_OPENCL_2_2_APIS
+#endif
+
 #include <CL/cl.h>
 #include <CL/cl_ext.h>
+#include <CL/cl_icd.h>
+#include <stdio.h>
 
 /*
  * type definitions
  */
 
-typedef CL_API_ENTRY cl_int (CL_API_CALL *pfn_clIcdGetPlatformIDs)(
+typedef cl_int (CL_API_CALL *pfn_clIcdGetPlatformIDs)(
     cl_uint num_entries, 
     cl_platform_id *platforms, 
     cl_uint *num_platforms) CL_API_SUFFIX__VERSION_1_0;
 
-typedef CL_API_ENTRY cl_int (CL_API_CALL *pfn_clGetPlatformInfo)(
+typedef cl_int (CL_API_CALL *pfn_clGetPlatformInfo)(
     cl_platform_id   platform, 
     cl_platform_info param_name,
     size_t           param_value_size, 
     void *           param_value,
     size_t *         param_value_size_ret) CL_API_SUFFIX__VERSION_1_0;
 
-typedef CL_API_ENTRY void *(CL_API_CALL *pfn_clGetExtensionFunctionAddress)(
+typedef void *(CL_API_CALL *pfn_clGetExtensionFunctionAddress)(
     const char *function_name)  CL_API_SUFFIX__VERSION_1_0;
 
 typedef struct KHRicdVendorRec KHRicdVendor;
@@ -83,6 +97,36 @@ struct KHRicdVendorRec
 // the global state
 extern KHRicdVendor * khrIcdVendors;
 
+extern int khrEnableTrace;
+
+#if defined(CL_ENABLE_LAYERS)
+/*
+ * KHRLayer
+ *
+ * Data for a single Layer
+ */
+struct KHRLayer;
+struct KHRLayer
+{
+    // the loaded library object (true type varies on Linux versus Windows)
+    void *library;
+    // the dispatch table of the layer
+    struct _cl_icd_dispatch dispatch;
+    // The next layer in the chain
+    struct KHRLayer *next;
+#ifdef CL_LAYER_INFO
+    // The layer library name
+    char *libraryName;
+    // the pointer to the clGetLayerInfo funciton
+    void *p_clGetLayerInfo;
+#endif
+};
+
+// the global layer state
+extern struct KHRLayer * khrFirstLayer;
+extern struct _cl_icd_dispatch khrMasterDispatch;
+#endif // defined(CL_ENABLE_LAYERS)
+
 /* 
  * khrIcd interface
  */
@@ -94,6 +138,9 @@ extern KHRicdVendor * khrIcdVendors;
 // API (e.g, getPlatformIDs, etc).
 void khrIcdInitialize(void);
 
+// entrypoint to check and initialize trace.
+void khrIcdInitializeTrace(void);
+
 // go through the list of vendors (in /etc/OpenCL.conf or through 
 // the registry) and call khrIcdVendorAdd for each vendor encountered
 // n.b, this call is OS-specific
@@ -104,6 +151,12 @@ void khrIcdVendorsEnumerateEnv(void);
 
 // add a vendor's implementation to the list of libraries
 void khrIcdVendorAdd(const char *libraryName);
+
+// read layers from environment variables
+void khrIcdLayersEnumerateEnv(void);
+
+// add a layer to the layer chain
+void khrIcdLayerAdd(const char *libraryName);
 
 // dynamically load a library.  returns NULL on failure
 // n.b, this call is OS-specific
@@ -123,63 +176,71 @@ void khrIcdContextPropertiesGetPlatform(
     cl_platform_id *outPlatform);
 
 // internal tracing macros
-#if 0
-    #include <stdio.h>
-    #define KHR_ICD_TRACE(...) \
-    do \
+#define KHR_ICD_TRACE(...) \
+do \
+{ \
+    if (khrEnableTrace) \
     { \
         fprintf(stderr, "KHR ICD trace at %s:%d: ", __FILE__, __LINE__); \
         fprintf(stderr, __VA_ARGS__); \
-    } while (0)
+    } \
+} while (0)
+
 #ifdef _WIN32
 #define KHR_ICD_WIDE_TRACE(...) \
-    do \
+do \
+{ \
+    if (khrEnableTrace) \
     { \
         fwprintf(stderr, L"KHR ICD trace at %hs:%d: ", __FILE__, __LINE__); \
         fwprintf(stderr, __VA_ARGS__); \
-    } while (0)
+    } \
+} while (0)
+
 #else
 #define KHR_ICD_WIDE_TRACE(...)
 #endif
-    #define KHR_ICD_ASSERT(x) \
-    do \
-    { \
-        if (!(x)) \
-        { \
-            fprintf(stderr, "KHR ICD assert at %s:%d: %s failed", __FILE__, __LINE__, #x); \
-        } \
-    } while (0)
-#else
-    #define KHR_ICD_TRACE(...)
-    #define KHR_ICD_WIDE_TRACE(...)
-    #define KHR_ICD_ASSERT(x)
+
+// Check if the passed-in handle is NULL, and if it is, return the error.
+#define KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(_handle, _error)       \
+do {                                                                \
+    if (!_handle) {                                                 \
+        return _error;                                              \
+    }                                                               \
+} while (0)
+
+// Check if the passed-in handle is NULL, and if it is, first check and set
+// errcode_ret to the error, then return NULL (NULL being an invalid handle).
+#define KHR_ICD_VALIDATE_HANDLE_RETURN_HANDLE(_handle, _error)      \
+do {                                                                \
+    if (!_handle) {                                                 \
+        if (errcode_ret) {                                          \
+            *errcode_ret = _error;                                  \
+        }                                                           \
+        return NULL;                                                \
+    }                                                               \
+} while (0)
+
+// Check if the passed-in function pointer is NULL, and if it is, return
+// CL_INVALID_OPERATION.
+#define KHR_ICD_VALIDATE_POINTER_RETURN_ERROR(_pointer)             \
+do {                                                                \
+    if (!_pointer) {                                                \
+        return CL_INVALID_OPERATION;                                \
+    }                                                               \
+} while (0)
+
+// Check if the passed-in function pointer is NULL, and if it is, first
+// check and set errcode_ret to CL_INVALID_OPERATION, then return NULL
+// (NULL being an invalid handle).
+#define KHR_ICD_VALIDATE_POINTER_RETURN_HANDLE(_pointer)            \
+do {                                                                \
+    if (!_pointer) {                                                \
+        if (errcode_ret) {                                          \
+            *errcode_ret = CL_INVALID_OPERATION;                    \
+        }                                                           \
+        return NULL;                                                \
+    }                                                               \
+} while (0)
+
 #endif
-
-// if handle is NULL then return invalid_handle_error_code
-#define KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(handle,invalid_handle_error_code) \
-    do \
-    { \
-        if (!handle) \
-        { \
-            return invalid_handle_error_code; \
-        } \
-    } while (0)
-
-// if handle is NULL then set errcode_ret to invalid_handle_error and return NULL 
-// (NULL being an invalid handle)
-#define KHR_ICD_VALIDATE_HANDLE_RETURN_HANDLE(handle,invalid_handle_error) \
-    do \
-    { \
-        if (!handle) \
-        { \
-            if (errcode_ret) \
-            { \
-                *errcode_ret = invalid_handle_error; \
-            } \
-            return NULL; \
-        } \
-    } while (0)
-
-
-#endif
-

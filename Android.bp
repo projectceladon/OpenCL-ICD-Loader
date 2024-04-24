@@ -14,7 +14,7 @@ cc_defaults {
     ],
 
     clang_cflags: [
-        "-Wno-error=non-virtual-dtor",
+        
     ],
 
     include_dirs: [
@@ -37,4 +37,5 @@ build = [
     "libIcdLog.bp",
     "libOpenCLDriverStub.bp",
     "icd_loader_test.bp",
+    "clinfo.bp",
 ]
