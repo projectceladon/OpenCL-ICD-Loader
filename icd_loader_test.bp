@@ -23,9 +23,8 @@ cc_binary {
     ],
 
     cflags: [
-        "-O3",
-        "-DNDEBUG",
-        "-DCL_TARGET_OPENCL_VERSION=220",
+        "-std=gnu99",
+        "-DCL_TARGET_OPENCL_VERSION=300",
     ],
 
     cppflags: [
@@ -33,7 +32,6 @@ cc_binary {
     ],
 
     local_include_dirs: [
-        "inc",
         "test/inc",
     ],
 

@@ -3,7 +3,6 @@
 
 #include<CL/cl.h>
 #include<CL/cl_gl.h>
-#include<CL/cl_gl_ext.h>
 
 struct clCreateCommandQueue_st
 {
@@ -68,6 +67,13 @@ struct clGetContextInfo_st
     size_t *param_value_size_ret;
 };
 
+struct clSetContextDestructorCallback_st
+{
+    cl_context context;
+    void (CL_CALLBACK *pfn_notify)(cl_context context, void *user_data);
+    void *user_data;
+};
+
 struct clGetPlatformIDs_st 
 {
     cl_uint num_entries;
@@ -113,6 +119,7 @@ struct clReleaseCommandQueue_st
 #define NUM_ITEMS_clRetainContext 1
 #define NUM_ITEMS_clReleaseContext 1
 #define NUM_ITEMS_clGetContextInfo 1
+#define NUM_ITEMS_clSetContextDestructorCallback 1
 #define NUM_ITEMS_clGetPlatformIDs 1
 #define NUM_ITEMS_clGetPlatformInfo 1
 #define NUM_ITEMS_clGetDeviceIDs 1
@@ -151,6 +158,7 @@ struct clReleaseDevice_st
 
 
 #define NUM_ITEMS_clCreateBuffer 1
+#define NUM_ITEMS_clCreateBufferWithProperties 1
 #define NUM_ITEMS_clCreateSubBuffer 1
 #define NUM_ITEMS_clEnqueueReadBuffer 1
 #define NUM_ITEMS_clEnqueueWriteBuffer 1
@@ -174,6 +182,17 @@ struct clCreateBuffer_st
     void *host_ptr;
     cl_int *errcode_ret;
 };
+
+struct clCreateBufferWithProperties_st
+{
+    cl_context context;
+    const cl_mem_properties * properties;
+    cl_mem_flags flags;
+    size_t size;
+    void *host_ptr;
+    cl_int *errcode_ret;
+};
+
 struct clCreateSubBuffer_st 
 {
     cl_mem buffer;
@@ -473,6 +492,7 @@ struct clGetProgramBuildInfo_st
 #define NUM_ITEMS_clCreateImage2D 1
 #define NUM_ITEMS_clCreateImage3D 1
 #define NUM_ITEMS_clCreateImage 1
+#define NUM_ITEMS_clCreateImageWithProperties 1
 #define NUM_ITEMS_clGetSupportedImageFormats 1
 #define NUM_ITEMS_clEnqueueCopyImageToBuffer 1
 #define NUM_ITEMS_clEnqueueCopyBufferToImage 1
@@ -490,6 +510,17 @@ struct clCreateImage_st
     cl_mem_flags flags;
     const cl_image_format *image_format;
     const cl_image_desc *image_desc; 
+    void *host_ptr;
+    cl_int *errcode_ret;
+};
+
+struct clCreateImageWithProperties_st
+{
+    cl_context context;
+    const cl_mem_properties * properties;
+    cl_mem_flags flags;
+    const cl_image_format *image_format;
+    const cl_image_desc *image_desc;
     void *host_ptr;
     cl_int *errcode_ret;
 };
@@ -771,7 +802,8 @@ struct clEnqueueMigrateMemObjects_st
 struct clEnqueueNDRangeKernel_st 
 {
     cl_command_queue command_queue;
-    cl_kernel kernel; cl_uint work_dim;
+    cl_kernel kernel;
+    cl_uint work_dim;
     const size_t *global_work_offset;
     const size_t *global_work_size;
     const size_t *local_work_size;  

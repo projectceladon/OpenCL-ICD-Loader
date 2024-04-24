@@ -21,11 +21,10 @@
 #define _GNU_SOURCE
 #endif
 
-#ifndef __ANDROID__
-#include "icd_cmake_config.h"
-#endif
+//#include "icd_cmake_config.h"
 
 #include <stdlib.h>
+#include <unistd.h>
 
 char *khrIcd_getenv(const char *name) {
     // No allocation of memory necessary for Linux.
@@ -44,16 +43,16 @@ char *khrIcd_secure_getenv(const char *name) {
     return geteuid() != getuid() || getegid() != getgid() ? NULL : khrIcd_getenv(name);
 #else
 // Linux
-#ifdef HAVE_SECURE_GETENV
-    return secure_getenv(name);
-#elif defined(HAVE___SECURE_GETENV)
-    return __secure_getenv(name);
-#else
-#pragma message(                                                                       \
-    "Warning:  Falling back to non-secure getenv for environmental lookups!  Consider" \
-    " updating to a different libc.")
+//#ifdef HAVE_SECURE_GETENV
+    //return secure_getenv(name);
+//##elif defined(HAVE___SECURE_GETENV)
+    //return __secure_getenv(name);
+//#else
+//#pragma message(                                                                       \
+//    "Warning:  Falling back to non-secure getenv for environmental lookups!  Consider" \
+//    " updating to a different libc.")
     return khrIcd_getenv(name);
-#endif
+//#endif
 #endif
 }
 

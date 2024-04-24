@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019 The Khronos Group Inc.
+ * Copyright (c) 2017-2020 The Khronos Group Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,136 +19,163 @@
 #include "icd.h"
 #include "icd_windows_dxgk.h"
 
-#if defined(OPENCL_ICD_LOADER_REQUIRE_WDK)
 #include <windows.h>
+#include "adapter.h"
 
 #ifndef NTSTATUS
 typedef LONG NTSTATUS;
 #define STATUS_SUCCESS  ((NTSTATUS)0x00000000L)
 #define STATUS_BUFFER_TOO_SMALL ((NTSTATUS)0xC0000023)
-#define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
-#endif
-
-#include <d3dkmthk.h>
+#define NT_SUCCESS(status) (((NTSTATUS)(status)) >= 0)
 #endif
 
 bool khrIcdOsVendorsEnumerateDXGK(void)
 {
     bool ret = false;
-#if defined(OPENCL_ICD_LOADER_REQUIRE_WDK)
-#if defined(DXGKDDI_INTERFACE_VERSION_WDDM2_4) && (DXGKDDI_INTERFACE_VERSION >= DXGKDDI_INTERFACE_VERSION_WDDM2_4)
+    int result = 0;
+
+    // Get handle to GDI Runtime
+    HMODULE h = LoadLibraryA("gdi32.dll");
+    if (h == NULL)
+        return ret;
+
+    if(GetProcAddress(h, "D3DKMTSubmitPresentBltToHwQueue")) // OS Version check
     {
-        D3DKMT_ADAPTERINFO* pAdapterInfo = NULL;
-        D3DKMT_ENUMADAPTERS2 EnumAdapters;
-        NTSTATUS Status = STATUS_SUCCESS;
+        LoaderEnumAdapters2 EnumAdapters;
+        NTSTATUS status = STATUS_SUCCESS;
 
-        // Get handle to GDI Runtime
-        HMODULE h = LoadLibrary("gdi32.dll");
-        KHR_ICD_ASSERT(h != NULL);
-
-        char cszLibraryName[MAX_PATH] = { 0 };
-        PFND3DKMT_ENUMADAPTERS2 pEnumAdapters2 = (PFND3DKMT_ENUMADAPTERS2)GetProcAddress((HMODULE)h, "D3DKMTEnumAdapters2");
+        EnumAdapters.adapter_count = 0;
+        EnumAdapters.adapters = NULL;
+        PFN_LoaderEnumAdapters2 pEnumAdapters2 = (PFN_LoaderEnumAdapters2)GetProcAddress(h, "D3DKMTEnumAdapters2");
         if (!pEnumAdapters2)
         {
-            KHR_ICD_TRACE("GetProcAddress failed for D3DKMT_ENUMADAPTERS2\n");
+            KHR_ICD_TRACE("GetProcAddress failed for D3DKMTEnumAdapters2\n");
+            goto out;
+        }
+        PFN_LoaderQueryAdapterInfo pQueryAdapterInfo = (PFN_LoaderQueryAdapterInfo)GetProcAddress(h, "D3DKMTQueryAdapterInfo");
+        if (!pQueryAdapterInfo)
+        {
+            KHR_ICD_TRACE("GetProcAddress failed for D3DKMTQueryAdapterInfo\n");
             goto out;
         }
         while (1)
         {
-            EnumAdapters.NumAdapters = 0;
-            EnumAdapters.pAdapters = NULL;
-            Status = pEnumAdapters2(&EnumAdapters);
-            if (Status == STATUS_BUFFER_TOO_SMALL)
+            EnumAdapters.adapter_count = 0;
+            EnumAdapters.adapters = NULL;
+            status = pEnumAdapters2(&EnumAdapters);
+            if (status == STATUS_BUFFER_TOO_SMALL)
             {
                 // Number of Adapters increased between calls, retry;
                 continue;
             }
-            else if (!NT_SUCCESS(Status))
+            else if (!NT_SUCCESS(status))
             {
-                KHR_ICD_TRACE("D3DKMT_ENUMADAPTERS2 status != SUCCESS\n");
+                KHR_ICD_TRACE("D3DKMTEnumAdapters2 status != SUCCESS\n");
                 goto out;
             }
             break;
         }
-        pAdapterInfo = (D3DKMT_ADAPTERINFO*)malloc(sizeof(D3DKMT_ADAPTERINFO)*(EnumAdapters.NumAdapters));
-        if (pAdapterInfo == NULL)
+        EnumAdapters.adapters = malloc(sizeof(*EnumAdapters.adapters)*(EnumAdapters.adapter_count));
+        if (EnumAdapters.adapters == NULL)
         {
-            KHR_ICD_TRACE("Allocation failure for AdapterInfo buffer\n");
+            KHR_ICD_TRACE("Allocation failure for adapters buffer\n");
             goto out;
         }
-        EnumAdapters.pAdapters = pAdapterInfo;
-        Status = pEnumAdapters2(&EnumAdapters);
-        if (!NT_SUCCESS(Status))
+        status = pEnumAdapters2(&EnumAdapters);
+        if (!NT_SUCCESS(status))
         {
-            KHR_ICD_TRACE("D3DKMT_ENUMADAPTERS2 status != SUCCESS\n");
+            KHR_ICD_TRACE("D3DKMTEnumAdapters2 status != SUCCESS\n");
             goto out;
         }
-        for (UINT AdapterIndex = 0; AdapterIndex < EnumAdapters.NumAdapters; AdapterIndex++)
+        const char* cszOpenCLRegKeyName = getOpenCLRegKeyName();
+        const int szOpenCLRegKeyName = (int)(strlen(cszOpenCLRegKeyName) + 1)*sizeof(cszOpenCLRegKeyName[0]);
+        for (UINT AdapterIndex = 0; AdapterIndex < EnumAdapters.adapter_count; AdapterIndex++)
         {
-            D3DDDI_QUERYREGISTRY_INFO QueryArgs = {0};
-            D3DDDI_QUERYREGISTRY_INFO* pQueryArgs = &QueryArgs;
-            D3DDDI_QUERYREGISTRY_INFO* pQueryBuffer = NULL;
-            QueryArgs.QueryType = D3DDDI_QUERYREGISTRY_ADAPTERKEY;
-            QueryArgs.QueryFlags.TranslatePath = TRUE;
-            QueryArgs.ValueType = REG_SZ;
-#ifdef _WIN64
-            wcscpy_s(QueryArgs.ValueName, ARRAYSIZE(L"OpenCLDriverName"), L"OpenCLDriverName");
-#else
-            // There is no WOW prefix for 32bit Windows hence make a specific check
-            BOOL is_wow64;
-            if (IsWow64Process(GetCurrentProcess(), &is_wow64) && is_wow64)
+            LoaderQueryRegistryInfo queryArgs = {0};
+            LoaderQueryRegistryInfo* pQueryArgs = &queryArgs;
+            LoaderQueryRegistryInfo* pQueryBuffer = NULL;
+            queryArgs.query_type = LOADER_QUERY_REGISTRY_ADAPTER_KEY;
+            queryArgs.query_flags.translate_path = TRUE;
+            queryArgs.value_type = REG_SZ;
+            result = MultiByteToWideChar(
+                CP_UTF8,
+                0,
+                cszOpenCLRegKeyName,
+                szOpenCLRegKeyName,
+                queryArgs.value_name,
+                ARRAYSIZE(queryArgs.value_name));
+            if (!result)
             {
-                wcscpy_s(QueryArgs.ValueName, ARRAYSIZE(L"OpenCLDriverNameWow"), L"OpenCLDriverNameWow");
+                KHR_ICD_TRACE("MultiByteToWideChar status != SUCCESS\n");
+                continue;
             }
-            else
+            LoaderQueryAdapterInfo queryAdapterInfo = {0};
+            queryAdapterInfo.handle = EnumAdapters.adapters[AdapterIndex].handle;
+            queryAdapterInfo.type = LOADER_QUERY_TYPE_REGISTRY;
+            queryAdapterInfo.private_data = &queryArgs;
+            queryAdapterInfo.private_data_size = sizeof(queryArgs);
+            status = pQueryAdapterInfo(&queryAdapterInfo);
+            if (!NT_SUCCESS(status))
             {
-                wcscpy_s(QueryArgs.ValueName, ARRAYSIZE(L"OpenCLDriverName"), L"OpenCLDriverName");
-            }
-#endif
-            D3DKMT_QUERYADAPTERINFO QueryAdapterInfo = {0};
-            QueryAdapterInfo.hAdapter = pAdapterInfo[AdapterIndex].hAdapter;
-            QueryAdapterInfo.Type = KMTQAITYPE_QUERYREGISTRY;
-            QueryAdapterInfo.pPrivateDriverData = &QueryArgs;
-            QueryAdapterInfo.PrivateDriverDataSize = sizeof(QueryArgs);
-            Status = D3DKMTQueryAdapterInfo(&QueryAdapterInfo);
-            if (!NT_SUCCESS(Status))
-            {
-                KHR_ICD_TRACE("D3DKMT_QUERYADAPTERINFO status != SUCCESS\n");
-                goto out;
-            }
-            if (NT_SUCCESS(Status) && pQueryArgs->Status == D3DDDI_QUERYREGISTRY_STATUS_BUFFER_OVERFLOW)
-            {
-                ULONG QueryBufferSize = sizeof(D3DDDI_QUERYREGISTRY_INFO) + QueryArgs.OutputValueSize;
-                pQueryBuffer = (D3DDDI_QUERYREGISTRY_INFO*)malloc(QueryBufferSize);
-                memcpy(pQueryBuffer, &QueryArgs, sizeof(D3DDDI_QUERYREGISTRY_INFO));
-                QueryAdapterInfo.pPrivateDriverData = pQueryBuffer;
-                QueryAdapterInfo.PrivateDriverDataSize = QueryBufferSize;
-                Status = D3DKMTQueryAdapterInfo(&QueryAdapterInfo);
-                pQueryArgs = pQueryBuffer;
-            }
-            if (NT_SUCCESS(Status) && pQueryArgs->Status == D3DDDI_QUERYREGISTRY_STATUS_SUCCESS)
-            {
-                wchar_t* pWchar = pQueryArgs->OutputString;
-                memset(cszLibraryName, 0, sizeof(cszLibraryName));
+                // Try a different value type.  Some vendors write the key as a multi-string type.
+                queryArgs.value_type = REG_MULTI_SZ;
+                status = pQueryAdapterInfo(&queryAdapterInfo);
+                if (NT_SUCCESS(status))
                 {
-                    size_t len = wcstombs(cszLibraryName, pWchar, sizeof(cszLibraryName));
-                    KHR_ICD_ASSERT(len == (sizeof(cszLibraryName) - 1));
-                    khrIcdVendorAdd(cszLibraryName);
+                    KHR_ICD_TRACE("Accepting multi-string registry key type\n");
+                }
+                else
+                {
+                    // Continue trying to get as much info on each adapter as possible.
+                    // It's too late to return FALSE and claim WDDM2_4 enumeration is not available here.
+                    continue;
                 }
             }
-            else if (Status == STATUS_INVALID_PARAMETER && pQueryArgs->Status == D3DDDI_QUERYREGISTRY_STATUS_FAIL)
+            if (NT_SUCCESS(status) && pQueryArgs->status == LOADER_QUERY_REGISTRY_STATUS_BUFFER_OVERFLOW)
+            {
+                ULONG queryBufferSize = sizeof(LoaderQueryRegistryInfo) + queryArgs.output_value_size;
+                pQueryBuffer = malloc(queryBufferSize);
+                if (pQueryBuffer == NULL)
+                    continue;
+                memcpy(pQueryBuffer, &queryArgs, sizeof(LoaderQueryRegistryInfo));
+                queryAdapterInfo.private_data = pQueryBuffer;
+                queryAdapterInfo.private_data_size = queryBufferSize;
+                status = pQueryAdapterInfo(&queryAdapterInfo);
+                pQueryArgs = pQueryBuffer;
+            }
+            if (NT_SUCCESS(status) && pQueryArgs->status == LOADER_QUERY_REGISTRY_STATUS_SUCCESS)
+            {
+                char cszLibraryName[MAX_PATH];
+                result = WideCharToMultiByte(
+                    CP_UTF8,
+                    0,
+                    pQueryArgs->output_string,
+                    -1,
+                    cszLibraryName,
+                    MAX_PATH,
+                    NULL,
+                    NULL);
+                if (!result)
+                {
+                    KHR_ICD_TRACE("WideCharToMultiByte status != SUCCESS\n");
+                }
+                else
+                {
+                    ret |= adapterAdd(cszLibraryName, EnumAdapters.adapters[AdapterIndex].luid);
+                }
+            }
+            else if (status == (NTSTATUS)STATUS_INVALID_PARAMETER)
             {
                 free(pQueryBuffer);
                 goto out;
             }
             free(pQueryBuffer);
         }
-        ret = true;
 out:
-      free(pAdapterInfo);
-      FreeLibrary(h);
+      free(EnumAdapters.adapters);
     }
-#endif
-#endif
+
+    FreeLibrary(h);
+
     return ret;
 }
