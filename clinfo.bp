@@ -1,0 +1,30 @@
+cc_binary {
+    name: "clinfo",
+
+    vendor: true,
+
+    defaults: [
+        "OpenCL-ICD-Loader-defaults",
+    ],
+
+    srcs: [
+        "clinfo/OpenCLInfo.cpp",
+    ],
+
+    cflags: [
+        "-O3",
+        "-DNDEBUG",
+        "-DCL_TARGET_OPENCL_VERSION=300",
+    ],
+
+    local_include_dirs: [
+    ],
+
+    shared_libs: [
+        "libOpenCL",
+    ],
+
+    static_libs: [
+    ],
+
+}
