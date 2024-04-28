@@ -1,0 +1,31 @@
+cc_defaults {
+    name: "OpenCL-ICD-Loader-defaults",
+
+    vendor: true,
+
+    cflags: [
+        "-Wno-error",
+        "-Wno-error=implicit-function-declaration",
+        "-DAMD64",
+    ],
+
+    include_dirs: [
+        "hardware/intel/external/opencl/compute-runtime/third_party/opencl_headers",
+    ],
+
+    shared_libs: [
+        
+    ],
+
+    static_libs: [
+        
+    ],
+
+}
+
+
+build = [
+    "libOpenCL.bp",
+    "libIcdLog.bp",
+    "libOpenCLDriverStub.bp",
+]
