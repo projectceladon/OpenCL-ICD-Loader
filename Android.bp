@@ -36,4 +36,5 @@ build = [
     "libOpenCL.bp",
     "libIcdLog.bp",
     "libOpenCLDriverStub.bp",
+    "clinfo.bp",
 ]
