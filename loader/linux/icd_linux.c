@@ -28,6 +28,8 @@
 #include <dirent.h>
 #include <pthread.h>
 #include <limits.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 static pthread_once_t initialized = PTHREAD_ONCE_INIT;
 
@@ -44,6 +46,7 @@ static inline void khrIcdOsDirEntryValidateAndAdd(const char *d_name, const char
 {
     struct stat statBuff;
     char* fileName = NULL;
+    int fd;
 
     // make sure the file name ends in `extension` (eg. .icd, or .lay)
     if (strlen(extension) > strlen(d_name))
@@ -64,9 +67,17 @@ static inline void khrIcdOsDirEntryValidateAndAdd(const char *d_name, const char
     }
     sprintf(fileName, "%s/%s", path, d_name);
 
-    if (stat(fileName, &statBuff))
-    {
-        KHR_ICD_TRACE("Failed stat for: %s, continuing\n", fileName);
+    fd = open(fileName, O_RDONLY);
+    if (fd == -1) {
+        KHR_ICD_TRACE("Opening Failed for File: %s\n", fileName);
+        free(fileName);
+        return;
+    }
+
+    // Get file status information using fstat
+    if (fstat(fd, &statBuff) == -1) {
+        KHR_ICD_TRACE("Failed fstat for file: %s\n", fileName);
+        close(fd);
         free(fileName);
         return;
     }
@@ -77,19 +88,26 @@ static inline void khrIcdOsDirEntryValidateAndAdd(const char *d_name, const char
         char* buffer = NULL;
         long bufferSize = 0;
 
-        // open the file and read its contents
-        fin = fopen(fileName, "r");
-        if (!fin)
-        {
+	fin = fdopen(fd, "r");
+        if (!fin) {
+            close(fd);
             free(fileName);
             return;
         }
         fseek(fin, 0, SEEK_END);
         bufferSize = ftell(fin);
 
+	if (bufferSize == -1) {
+            close(fd);
+            free(fileName);
+            fclose(fin);
+            return;
+	}
+
         buffer = malloc(bufferSize+1);
         if (!buffer)
         {
+            close(fd);
             free(fileName);
             fclose(fin);
             return;
@@ -98,6 +116,7 @@ static inline void khrIcdOsDirEntryValidateAndAdd(const char *d_name, const char
         fseek(fin, 0, SEEK_SET);
         if (bufferSize != (long)fread(buffer, 1, bufferSize, fin))
         {
+            close(fd);
             free(fileName);
             free(buffer);
             fclose(fin);
@@ -109,6 +128,7 @@ static inline void khrIcdOsDirEntryValidateAndAdd(const char *d_name, const char
         // load the string read from the file
         addFunc(buffer);
 
+        close(fd);
         free(fileName);
         free(buffer);
         fclose(fin);
@@ -116,6 +136,7 @@ static inline void khrIcdOsDirEntryValidateAndAdd(const char *d_name, const char
      else
      {
          KHR_ICD_TRACE("File %s is not a regular file nor symbolic link, continuing\n", fileName);
+	 close(fd);
          free(fileName);
      }
 }
