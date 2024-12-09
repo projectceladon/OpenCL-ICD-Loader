@@ -36,7 +36,7 @@ cc_library_shared {
     ],
 
     shared_libs: [
-        
+       "libcutils",
     ],
 
     static_libs: [
