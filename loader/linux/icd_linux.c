@@ -29,6 +29,10 @@
 #include <pthread.h>
 #include <limits.h>
 
+#ifdef ANDROID
+#include <cutils/properties.h>
+#endif
+
 static pthread_once_t initialized = PTHREAD_ONCE_INIT;
 
 /*
@@ -216,8 +220,13 @@ void khrIcdOsVendorsEnumerate(void)
 {
     khrIcdInitializeTrace();
     khrIcdVendorsEnumerateEnv();
-
+#ifdef ANDROID
+    char libName[PROPERTY_VALUE_MAX];
+    property_get("vendor.opencl.lib", libName, "libigdrcl.so");
+    khrIcdVendorAdd(libName);
+#else
     khrIcdOsDirEnumerate(ICD_VENDOR_PATH, "OCL_ICD_VENDORS", ".icd", khrIcdVendorAdd, 0);
+#endif
 
 #if defined(CL_ENABLE_LAYERS)
     // system layers should be closer to the driver
